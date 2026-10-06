@@ -1,0 +1,11 @@
+{
+    "appId": "org.webosports.app.remote",
+    "type": "regular",
+    "allowedNames": ["org.webosports.app.remote-*", ""],
+    "permissions": [
+        {
+            "service": "org.webosports.app.remote-*",
+            "outbound": ["*"]
+        }
+    ]
+}
