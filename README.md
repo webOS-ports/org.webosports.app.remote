@@ -1,5 +1,12 @@
-# Remote
+Remote
+======
 
+Summary
+-------
+Universal remote for LuneOS devices with an infrared transmitter.
+
+Description
+-----------
 A universal remote for LuneOS devices with an infrared transmitter (IR
 blaster), such as the Samsung Galaxy Tab Pro 10.1 (SM-T520).
 
@@ -10,7 +17,8 @@ menu keys, transport, colour keys, a number pad, and every other key the
 remote has in a grid at the bottom. If the exact model is not listed, "Try" on
 each row sends a harmless key so the right code set is quick to find.
 
-## How it fits together
+How it fits together
+--------------------
 
 - **Codes**: [Flipper-IRDB](https://github.com/Lucaslhm/Flipper-IRDB) (CC0-1.0),
   turned into compact JSON at build time by `tools/build-irdb.py`. Its
@@ -26,7 +34,8 @@ each row sends a harmless key so the right code set is quick to find.
   physical remote, from the spellings that occur in the database.
 - **Saved remotes**: LocalStorage, keeping only the pointer into the database.
 
-## Building
+Building
+--------
 
 CMake with the webOS modules, as every LuneOS app. `IRDB_SOURCE_DIR` must point
 at a Flipper-IRDB checkout:
@@ -37,6 +46,7 @@ For a quick try on a device over adb:
 
     tools/deploy.sh /path/to/Flipper-IRDB [adb serial]
 
-## Licence
+Licence
+-------
 
 GPL-3.0-only. The code database is CC0-1.0.
