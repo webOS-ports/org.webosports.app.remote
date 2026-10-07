@@ -62,7 +62,55 @@ BasePage {
     // A short screen has width to spare beside the pad and the number pad:
     // the menu keys go right of the arrows, the colour keys right of the digits
     readonly property bool sideMenu: appWindow.shortScreen && !stackedNavigation && menuKeys.length > 0
-    readonly property bool sideColours: appWindow.shortScreen && hasDigits && colourKeys.length > 0
+    readonly property bool sideColours: appWindow.shortScreen && hasDigits && colourKeys.length > 0 && colourKeys.length <= 4
+
+    /*
+     * On a short screen the navigation row is sized from the room the page
+     * really has, so it fills the first page instead of leaving its bottom
+     * empty: the pad takes what the height after the Power group and the
+     * width after the rockers and the menu keys both allow, and the rockers
+     * and menu keys scale with it.
+     */
+    readonly property real navSpacing: Units.gu(1.5)
+    readonly property real sideMenuWidth: sideMenu ? keyWidth * 1.2 * (menuKeys.length > 4 ? 2 : 1) : 0
+    readonly property real fitRockerKey: Math.max(Units.gu(5.5), Math.min(Units.gu(8), fitPad * 0.3))
+    readonly property real fitPad: {
+        var inner = columnWidth - 2 * groupPadding;
+        // The rockers are 0.3 of the pad (but at least 5.5 grid units), so
+        // solve pad + 2 rockers = what is left of the width
+        var left = inner - sideMenuWidth - navSpacing * (sideMenu ? 3 : 2);
+        var byWidth = left / 1.6;
+        if (byWidth * 0.3 < Units.gu(5.5))
+            byWidth = left - 2 * Units.gu(5.5);
+        var byHeight = controlPage.height - Units.gu(1) - powerGroup.height - Units.gu(0.5)
+                       - navGroup.topPadding - navGroup.bottomPadding - Units.gu(1);
+        return Math.max(Units.gu(15), Math.min(Units.gu(30), byWidth, byHeight));
+    }
+
+    /*
+     * What a short screen has left over once a page's groups are laid out
+     * goes to the keys that can use it: the Power row on the first page (the
+     * pad is bound by the width there), the digit rows on the second. Worked
+     * out from the groups' fixed padding and the known key sizes, never from
+     * the content's own height, so nothing here feeds back into itself.
+     */
+    readonly property real fitPowerKey: {
+        if (!appWindow.shortScreen)
+            return keyHeight;
+        var free = controlPage.height - Units.gu(1.5)
+                   - powerGroup.topPadding - powerGroup.bottomPadding
+                   - navGroup.topPadding - navGroup.bottomPadding - fitPad - Units.gu(0.5);
+        return Math.max(keyHeight, Math.min(keyHeight * 2, free));
+    }
+    readonly property real fitDigitKey: {
+        if (!appWindow.shortScreen)
+            return keyHeight;
+        var free = mediaPage.height - Units.gu(1.5)
+                   - (transportKeys.length > 0 ? playbackGroup.topPadding + playbackGroup.bottomPadding
+                                                 + keyHeight + Units.gu(0.5) : 0)
+                   - numbersGroup.topPadding - numbersGroup.bottomPadding - 3 * Units.gu(1);
+        return Math.max(keyHeight, Math.min(keyHeight * 1.8, free / 4));
+    }
 
     readonly property real groupPadding: appWindow.shortScreen ? 6 : 12
     readonly property real groupSpacing: appWindow.shortScreen ? 3 : 6
@@ -178,6 +226,8 @@ BasePage {
                 spacing: appWindow.shortScreen ? Units.gu(0.5) : Units.gu(1)
 
                 GroupBox {
+                    id: powerGroup
+
                     width: parent.width
                     padding: page.groupPadding
                     spacing: page.groupSpacing
@@ -193,30 +243,30 @@ BasePage {
                             spacing: Units.gu(1)
 
                             RemoteKey {
-                                width: page.keyWidth; height: page.keyHeight
+                                width: page.keyWidth; height: page.fitPowerKey
                                 button: page.slots.power || null
                                 caption: "Power"
                                 keyColour: LuneOSButton.negativeColor
                             }
                             RemoteKey {
-                                width: page.keyWidth; height: page.keyHeight
+                                width: page.keyWidth; height: page.fitPowerKey
                                 button: page.slots.powerOn || null
                                 caption: "On"
                                 keyColour: LuneOSButton.affirmativeColor
                             }
                             RemoteKey {
-                                width: page.keyWidth; height: page.keyHeight
+                                width: page.keyWidth; height: page.fitPowerKey
                                 button: page.slots.powerOff || null
                                 caption: "Off"
                                 keyColour: LuneOSButton.negativeColor
                             }
                             RemoteKey {
-                                width: page.keyWidth; height: page.keyHeight
+                                width: page.keyWidth; height: page.fitPowerKey
                                 button: page.slots.source || null
                                 caption: "Input"
                             }
                             RemoteKey {
-                                width: page.keyWidth; height: page.keyHeight
+                                width: page.keyWidth; height: page.fitPowerKey
                                 button: page.slots.mute || null
                                 caption: "Mute"
                             }
@@ -235,6 +285,8 @@ BasePage {
                 }
 
                 GroupBox {
+                    id: navGroup
+
                     width: parent.width
                     padding: page.groupPadding
                     spacing: page.groupSpacing
@@ -249,11 +301,11 @@ BasePage {
                         // has volume and channel; with no pad they sit side by side
                         Row {
                             anchors.horizontalCenter: parent.horizontalCenter
-                            spacing: appWindow.shortScreen ? Units.gu(1.5) : Units.gu(3)
+                            spacing: appWindow.shortScreen ? page.navSpacing : Units.gu(3)
                             visible: !page.stackedNavigation && (page.hasPad || page.rockers.length > 0)
 
                             Rocker {
-                                keySize: page.rockerKeySize
+                                keySize: appWindow.shortScreen ? page.fitRockerKey : page.rockerKeySize
                                 readonly property var r: page.rockers.length > 0 ? page.rockers[0] : null
                                 anchors.verticalCenter: parent.verticalCenter
                                 label: r ? r.label : ""
@@ -262,17 +314,19 @@ BasePage {
                             }
 
                             DPad {
+                                id: sidePad
+
                                 anchors.verticalCenter: parent.verticalCenter
                                 slots: page.slots
-                                size: Math.max(Units.gu(15), Math.min(appWindow.shortScreen ? Units.gu(17) : Units.gu(26),
-                                                                  page.columnWidth - Units.gu(26)))
+                                size: appWindow.shortScreen ? page.fitPad
+                                      : Math.max(Units.gu(15), Math.min(Units.gu(26), page.columnWidth - Units.gu(26)))
                             }
 
                             Repeater {
                                 model: page.rockers.slice(1)
 
                                 Rocker {
-                                    keySize: page.rockerKeySize
+                                    keySize: appWindow.shortScreen ? page.fitRockerKey : page.rockerKeySize
                                     anchors.verticalCenter: parent.verticalCenter
                                     label: modelData.label
                                     upButton: modelData.up || null
@@ -282,6 +336,10 @@ BasePage {
 
                             // The menu keys, right of the pad where the screen is short
                             Grid {
+                                id: sideMenuGrid
+
+                                readonly property int rows: Math.ceil(page.menuKeys.length / columns)
+
                                 anchors.verticalCenter: parent.verticalCenter
                                 visible: page.sideMenu
                                 columns: page.menuKeys.length > 4 ? 2 : 1
@@ -290,11 +348,12 @@ BasePage {
                                 Repeater {
                                     model: page.sideMenu ? page.menuKeys : []
 
+                                    // As tall as the pad lets them be, shared between the rows
                                     RemoteKey {
-                                        width: page.menuKeys.length > 4 ? page.keyWidth * 0.75 : page.keyWidth
-                                        height: page.keyHeight
+                                        width: page.sideMenuWidth / sideMenuGrid.columns
+                                        height: Math.min(page.keyHeight * 1.6,
+                                                         (sidePad.size - (sideMenuGrid.rows - 1) * sideMenuGrid.spacing) / sideMenuGrid.rows)
                                         button: modelData
-                                        font.pixelSize: FontUtils.sizeToPixels("small")
                                     }
                                 }
                             }
@@ -328,16 +387,21 @@ BasePage {
                             }
                         }
 
-                        Flow {
+                        // The menu keys under the pad, sharing the width evenly
+                        Grid {
+                            id: menuRow
+
                             width: parent.width
                             spacing: Units.gu(1)
-                            visible: !page.sideMenu
+                            columns: Math.max(1, Math.min(4, page.menuKeys.length))
+                            visible: !page.sideMenu && page.menuKeys.length > 0
 
                             Repeater {
                                 model: page.sideMenu ? [] : page.menuKeys
 
                                 RemoteKey {
-                                    width: page.keyWidth; height: page.keyHeight
+                                    width: (menuRow.width - (menuRow.columns - 1) * menuRow.spacing) / menuRow.columns
+                                    height: page.keyHeight
                                     button: modelData
                                 }
                             }
@@ -366,6 +430,8 @@ BasePage {
                 spacing: appWindow.shortScreen ? Units.gu(0.5) : Units.gu(1)
 
                 GroupBox {
+                    id: playbackGroup
+
                     width: parent.width
                     padding: page.groupPadding
                     spacing: page.groupSpacing
@@ -407,49 +473,81 @@ BasePage {
                 }
 
                 GroupBox {
+                    id: numbersGroup
+
                     width: parent.width
                     padding: page.groupPadding
                     spacing: page.groupSpacing
                     visible: page.hasDigits
                     title: "Numbers"
 
-                    Row {
+                    Column {
                         anchors.horizontalCenter: parent.horizontalCenter
-                        spacing: Units.gu(2)
+                        spacing: Units.gu(1)
 
-                        // Digits as a phone-style pad
-                        Grid {
-                            columns: 3
+                        Row {
                             spacing: Units.gu(1)
 
-                            Repeater {
-                                model: ["digit1", "digit2", "digit3", "digit4", "digit5", "digit6",
-                                        "digit7", "digit8", "digit9", "", "digit0", ""]
+                            // Digits as a phone-style pad
+                            Grid {
+                                id: digitGrid
 
-                                Item {
-                                    width: page.keyWidth; height: page.keyHeight
+                                columns: 3
+                                spacing: Units.gu(1)
+
+                                Repeater {
+                                    model: ["digit1", "digit2", "digit3", "digit4", "digit5", "digit6",
+                                            "digit7", "digit8", "digit9", "", "digit0", ""]
+
+                                    Item {
+                                        width: page.keyWidth; height: page.fitDigitKey
+
+                                        RemoteKey {
+                                            anchors.fill: parent
+                                            button: modelData !== "" ? (page.slots[modelData] || null) : null
+                                            font.pixelSize: FontUtils.sizeToPixels("large")
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Where the screen is short, the colour keys as a fourth
+                            // column: digit-sized, one level with each row of digits
+                            Column {
+                                visible: page.sideColours
+                                spacing: digitGrid.spacing
+
+                                Repeater {
+                                    model: page.sideColours ? page.colourKeys : []
 
                                     RemoteKey {
-                                        anchors.fill: parent
-                                        button: modelData !== "" ? (page.slots[modelData] || null) : null
-                                        font.pixelSize: FontUtils.sizeToPixels("large")
+                                        width: page.keyWidth
+                                        height: page.fitDigitKey
+                                        button: modelData
+                                        caption: " "
+                                        keyColour: ButtonMap.colourFor(modelData[0])
                                     }
                                 }
                             }
                         }
 
-                        // The colour keys, right of the digits where the screen is short
-                        Column {
-                            anchors.verticalCenter: parent.verticalCenter
-                            visible: page.sideColours
-                            spacing: Units.gu(0.5)
+                        // Otherwise under the digits, as on a TV remote: digit-high,
+                        // and the row spanning exactly the pad so the edges line up
+                        Grid {
+                            id: colourUnderDigits
+
+                            width: digitGrid.width
+                            spacing: digitGrid.spacing
+                            columns: Math.max(1, page.colourKeys.length)
+                            visible: !page.sideColours && page.colourKeys.length > 0
 
                             Repeater {
-                                model: page.sideColours ? page.colourKeys : []
+                                model: page.sideColours ? [] : page.colourKeys
 
                                 RemoteKey {
-                                    width: page.keyWidth * 0.8
-                                    height: page.keyHeight * 0.75
+                                    width: (colourUnderDigits.width - (colourUnderDigits.columns - 1) * colourUnderDigits.spacing)
+                                           / colourUnderDigits.columns
+                                    height: page.keyHeight
                                     button: modelData
                                     caption: " "
                                     keyColour: ButtonMap.colourFor(modelData[0])
@@ -463,18 +561,24 @@ BasePage {
                     width: parent.width
                     padding: page.groupPadding
                     spacing: page.groupSpacing
-                    visible: page.colourKeys.length > 0 && !page.sideColours
+                    // Only for a remote with colour keys and no number pad to put them with
+                    visible: page.colourKeys.length > 0 && !page.hasDigits
                     title: "Colour keys"
 
-                    Row {
-                        anchors.horizontalCenter: parent.horizontalCenter
+                    // Shared out evenly across the width, as on a TV remote
+                    Grid {
+                        id: colourRow
+
+                        width: parent.width
                         spacing: Units.gu(1)
+                        columns: Math.max(1, page.colourKeys.length)
 
                         Repeater {
                             model: page.colourKeys
 
                             RemoteKey {
-                                width: page.keyWidth * 0.8; height: page.keyHeight * 0.6
+                                width: (colourRow.width - (colourRow.columns - 1) * colourRow.spacing) / colourRow.columns
+                                height: page.keyHeight * 0.6
                                 button: modelData
                                 caption: " "
                                 keyColour: ButtonMap.colourFor(modelData[0])
