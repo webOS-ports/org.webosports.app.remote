@@ -162,7 +162,10 @@ WebOSWindow {
         anchors.top: parent.top
         anchors.left: parent.left
         anchors.right: parent.right
-        height: Units.gu(10)
+        // The settings apps' header height, less of it where the screen has
+        // little to spare - a phone's width, or the Q25's square
+        height: (appWindow.height < Units.gu(70) || appWindow.width < Units.gu(50))
+                ? Units.gu(7.5) : Units.gu(10)
 
         title: pageStack.currentItem && pageStack.currentItem.title ? pageStack.currentItem.title : "Remote"
         showBack: pageStack.depth > 1

@@ -45,40 +45,55 @@ Pane {
         fillMode: Image.Stretch
     }
 
-    Row {
+    // A phone's width: the icon gives way to the title once there is a Back
+    // key, since the title is what says where you are
+    readonly property bool compact: width < Units.gu(50)
+
+    Button {
+        id: backButton
+
         anchors.left: parent.left
         anchors.leftMargin: Units.gu(1)
+        anchors.verticalCenter: parent.verticalCenter
+        width: visible ? implicitWidth : 0
+
+        visible: root.showBack
+        text: "Back"
+        LuneOSButton.mainColor: LuneOSButton.secondaryColor
+
+        onClicked: root.backClicked()
+    }
+
+    Image {
+        id: iconImage
+
+        anchors.left: backButton.right
+        anchors.leftMargin: Units.gu(1)
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        anchors.margins: Units.gu(1)
+        width: visible ? height : 0
+
+        visible: !(root.compact && root.showBack)
+        source: root.icon
+        fillMode: Image.PreserveAspectFit
+        smooth: true
+        mipmap: true
+    }
+
+    Label {
+        // Bounded on both sides, so a long model name elides before it
+        // reaches the page's action instead of running underneath it
+        anchors.left: iconImage.right
+        anchors.leftMargin: Units.gu(1)
         anchors.right: actionLoader.left
-        height: parent.height
-        spacing: Units.gu(1)
+        anchors.rightMargin: Units.gu(1)
+        anchors.verticalCenter: parent.verticalCenter
 
-        Button {
-            anchors.verticalCenter: parent.verticalCenter
-            visible: root.showBack
-            text: "Back"
-            LuneOSButton.mainColor: LuneOSButton.secondaryColor
-
-            onClicked: root.backClicked()
-        }
-
-        Image {
-            anchors.top: parent.top
-            anchors.bottom: parent.bottom
-            anchors.margins: Units.gu(1)
-            width: height
-            source: root.icon
-            fillMode: Image.PreserveAspectFit
-            smooth: true
-            mipmap: true
-        }
-
-        Label {
-            anchors.verticalCenter: parent.verticalCenter
-            text: root.title
-            elide: Text.ElideRight
-            font.pixelSize: FontUtils.sizeToPixels("large")
-            font.weight: Font.Bold
-        }
+        text: root.title
+        elide: Text.ElideRight
+        font.pixelSize: FontUtils.sizeToPixels(root.compact ? "medium" : "large")
+        font.weight: Font.Bold
     }
 
     Loader {

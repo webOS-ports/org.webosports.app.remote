@@ -16,6 +16,10 @@
 
 import QtQuick 2.9
 import QtQuick.Controls 2.2
+import QtQuick.Window 2.2
+
+// Units
+import LunaNext.Common 0.1
 
 import "Common"
 
@@ -31,6 +35,9 @@ Page {
     // Shown on the right of the header, where the settings apps have their switch
     property Component headerAction: null
     property alias explanation: footerText.text
+    // On a short screen - the Q25's square - the explanation gives its room
+    // to the content, unless the page cannot be used without reading it
+    property bool explanationOnShortScreen: false
 
     background: Rectangle {
         gradient: Gradient {
@@ -42,7 +49,7 @@ Page {
     footer: ExplanationText {
         id: footerText
 
-        visible: text !== ""
+        visible: text !== "" && (basePage.explanationOnShortScreen || basePage.Window.height >= Units.gu(60))
         leftPadding: 4
         rightPadding: 4
         bottomPadding: 4

@@ -37,7 +37,9 @@ PickerPage {
     title: brand.name + " " + category.title
     groupTitle: "Choose a model"
     tryLabel: "Try"
-    explanation: "Point the tablet at your " + category.title.replace(/s$/, "") +
+    // How Try works is the one thing on these pages worth a line of a small screen
+    explanationOnShortScreen: true
+    explanation: "Point this device at your " + category.title.replace(/s$/, "") +
           " and press Try on a row: it sends " + testKeyName() + ". Pick the first one that works."
 
     items: brand.models.map(function(model) {

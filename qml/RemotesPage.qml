@@ -39,8 +39,8 @@ BasePage {
 
     title: "Remote"
     explanation: remotes.length > 0
-                 ? "Point the top of the tablet at the device. Touch and hold a remote to rename or remove it."
-                 : "Add one for your TV, sound bar, projector, fan, air conditioner or light strip, and this tablet becomes its remote."
+                 ? "Point this device at the one you want to control. Touch and hold a remote to rename or remove it."
+                 : "Add one for your TV, sound bar, projector, fan, air conditioner or light strip, and this device becomes its remote."
 
     property var remotes: []
 

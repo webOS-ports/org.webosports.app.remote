@@ -56,6 +56,11 @@ BasePage {
     // Four keys to a row inside a group's padding
     readonly property real keyWidth: (columnWidth - Units.gu(7)) / 4
     readonly property real keyHeight: Units.gu(6)
+    // Rocker, pad and rocker side by side want about this much width. Below
+    // it, on a portrait phone, the pad gets a row of its own and the rockers go
+    // under it; a square or landscape screen (the Q25) has the width but not
+    // the height for that, and keeps them side by side with a smaller pad.
+    readonly property bool stackedNavigation: columnWidth < Units.gu(52) && height > width
 
     // Rocker pairs in the order this kind of device wants them
     readonly property var rockers: {
@@ -198,7 +203,7 @@ BasePage {
                     Row {
                         anchors.horizontalCenter: parent.horizontalCenter
                         spacing: Units.gu(3)
-                        visible: page.hasPad || page.rockers.length > 0
+                        visible: !page.stackedNavigation && (page.hasPad || page.rockers.length > 0)
 
                         Rocker {
                             readonly property var r: page.rockers.length > 0 ? page.rockers[0] : null
@@ -211,7 +216,7 @@ BasePage {
                         DPad {
                             anchors.verticalCenter: parent.verticalCenter
                             slots: page.slots
-                            size: Math.min(Units.gu(26), page.columnWidth - Units.gu(26))
+                            size: Math.max(Units.gu(16), Math.min(Units.gu(26), page.columnWidth - Units.gu(26)))
                         }
 
                         Repeater {
@@ -219,6 +224,31 @@ BasePage {
 
                             Rocker {
                                 anchors.verticalCenter: parent.verticalCenter
+                                label: modelData.label
+                                upButton: modelData.up || null
+                                downButton: modelData.down || null
+                            }
+                        }
+                    }
+
+                    // The same on a narrow screen: the pad as wide as it can
+                    // usefully be, the rockers side by side beneath it
+                    DPad {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        visible: page.stackedNavigation && page.hasPad
+                        slots: page.slots
+                        size: Math.min(Units.gu(26), page.columnWidth - Units.gu(4))
+                    }
+
+                    Row {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        spacing: Units.gu(3)
+                        visible: page.stackedNavigation && page.rockers.length > 0
+
+                        Repeater {
+                            model: page.stackedNavigation ? page.rockers : []
+
+                            Rocker {
                                 label: modelData.label
                                 upButton: modelData.up || null
                                 downButton: modelData.down || null
