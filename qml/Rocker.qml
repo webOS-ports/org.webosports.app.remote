@@ -31,33 +31,42 @@ Rectangle {
     property var upButton: null
     property var downButton: null
     property real keySize: Units.gu(8)
+    // Minus, label, plus in a row - a phone remote's volume bar - where there
+    // is width to spare and no height
+    property bool horizontal: false
+
+    readonly property real keyFace: keySize - Units.gu(1)
 
     visible: upButton !== null || downButton !== null
-    width: keySize
-    height: column.height + Units.gu(1)
+    width: horizontal ? keys.width + Units.gu(1) : keySize
+    height: horizontal ? keySize : keys.height + Units.gu(1)
     radius: keySize / 2
     color: "#a8a8a8"
 
-    Column {
-        id: column
+    Grid {
+        id: keys
 
-        anchors.horizontalCenter: parent.horizontalCenter
-        y: Units.gu(0.5)
+        anchors.centerIn: parent
         spacing: Units.gu(0.5)
+        columns: rocker.horizontal ? 3 : 1
+        // Up first in a column, down first (on the left) in a row
+        layoutDirection: Qt.LeftToRight
+        verticalItemAlignment: Grid.AlignVCenter
+        horizontalItemAlignment: Grid.AlignHCenter
 
         RemoteKey {
-            width: rocker.keySize - Units.gu(1)
+            width: rocker.keyFace
             height: width
-            button: rocker.upButton
-            caption: "+"
+            button: rocker.horizontal ? rocker.downButton : rocker.upButton
+            caption: rocker.horizontal ? "\u2212" : "+"
             repeat: true
             visible: true
-            enabled: rocker.upButton !== null
+            enabled: button !== null
             font.pixelSize: FontUtils.sizeToPixels("x-large")
         }
 
         Label {
-            width: rocker.keySize - Units.gu(1)
+            width: rocker.horizontal ? implicitWidth + Units.gu(1) : rocker.keyFace
             horizontalAlignment: Text.AlignHCenter
             text: rocker.label
             font.pixelSize: FontUtils.sizeToPixels("small")
@@ -66,13 +75,13 @@ Rectangle {
         }
 
         RemoteKey {
-            width: rocker.keySize - Units.gu(1)
+            width: rocker.keyFace
             height: width
-            button: rocker.downButton
-            caption: "−"
+            button: rocker.horizontal ? rocker.upButton : rocker.downButton
+            caption: rocker.horizontal ? "+" : "\u2212"
             repeat: true
             visible: true
-            enabled: rocker.downButton !== null
+            enabled: button !== null
             font.pixelSize: FontUtils.sizeToPixels("x-large")
         }
     }

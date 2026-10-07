@@ -55,7 +55,18 @@ BasePage {
     readonly property real columnWidth: Math.min(width - Units.gu(2), Units.gu(60))
     // Four keys to a row inside a group's padding
     readonly property real keyWidth: (columnWidth - Units.gu(7)) / 4
-    readonly property real keyHeight: Units.gu(6)
+    // The Q25's square has little height: lower keys and rockers there
+    readonly property real keyHeight: appWindow.shortScreen ? Units.gu(3.5) : Units.gu(6)
+    // The LuneOS GroupBox's own padding and spacing (12 and 6), halved where
+    // the screen is short - on the Q25 that is the row the page was missing
+    // A short screen has width to spare beside the pad and the number pad:
+    // the menu keys go right of the arrows, the colour keys right of the digits
+    readonly property bool sideMenu: appWindow.shortScreen && !stackedNavigation && menuKeys.length > 0
+    readonly property bool sideColours: appWindow.shortScreen && hasDigits && colourKeys.length > 0
+
+    readonly property real groupPadding: appWindow.shortScreen ? 6 : 12
+    readonly property real groupSpacing: appWindow.shortScreen ? 3 : 6
+    readonly property real rockerKeySize: appWindow.shortScreen ? Units.gu(5.5) : Units.gu(8)
     // Rocker, pad and rocker side by side want about this much width. Below
     // it, on a portrait phone, the pad gets a row of its own and the rockers go
     // under it; a square or landscape screen (the Q25) has the width but not
@@ -119,270 +130,419 @@ BasePage {
                                    slots.left !== undefined || slots.right !== undefined
     readonly property bool hasPowerRow: present(["power", "powerOn", "powerOff", "source", "mute", "shutter"]).length > 0
 
-    // The column of groups, capped and centred like the settings pages
-    Flickable {
-        anchors.fill: parent
-        contentWidth: width
-        contentHeight: body.height + Units.gu(2)
+    // Which page of keys is showing
+    property alias keyPage: pages.currentIndex
+
+    readonly property bool hasMediaPage: transportKeys.length > 0 || colourKeys.length > 0 || hasDigits
+    readonly property bool hasMorePage: sorted.rest.length > 0
+
+    /*
+     * The keys on pages flicked sideways, the way Messwerk pages its sensors,
+     * rather than one long column to scroll down: what a remote is used for
+     * most - power, volume, the arrows - is all on the first, and a small
+     * screen does not have to scroll to reach it. Each page still scrolls on
+     * its own when a remote has more keys than it can show.
+     */
+    SwipeView {
+        id: pages
+
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: indicator.top
         clip: true
 
-        Column {
-            id: body
+        // A remote without media keys or extra keys has no use for their page
+        Component.onCompleted: {
+            if (!page.hasMorePage)
+                removeItem(morePage);
+            if (!page.hasMediaPage)
+                removeItem(mediaPage);
+        }
 
-            width: page.columnWidth
-            x: (parent.width - width) / 2
-            y: Units.gu(1)
-            spacing: Units.gu(1)
+        // Power, volume, channel and the arrows
+        Flickable {
+            id: controlPage
 
-            GroupBox {
-                width: parent.width
-                visible: page.hasPowerRow
-                title: "Power"
+            contentWidth: width
+            contentHeight: controlColumn.height + Units.gu(2)
+            flickableDirection: Flickable.VerticalFlick
+            clip: true
 
-                Column {
+            Column {
+                id: controlColumn
+
+                width: page.columnWidth
+                x: (parent.width - width) / 2
+                y: appWindow.shortScreen ? Units.gu(0.5) : Units.gu(1)
+                spacing: appWindow.shortScreen ? Units.gu(0.5) : Units.gu(1)
+
+                GroupBox {
                     width: parent.width
-                    spacing: Units.gu(1)
+                    padding: page.groupPadding
+                    spacing: page.groupSpacing
+                    visible: page.hasPowerRow
+                    title: "Power"
 
-                    Flow {
+                    Column {
                         width: parent.width
                         spacing: Units.gu(1)
 
-                        RemoteKey {
-                            width: page.keyWidth; height: page.keyHeight
-                            button: page.slots.power || null
-                            caption: "Power"
-                            keyColour: LuneOSButton.negativeColor
-                        }
-                        RemoteKey {
-                            width: page.keyWidth; height: page.keyHeight
-                            button: page.slots.powerOn || null
-                            caption: "On"
-                            keyColour: LuneOSButton.affirmativeColor
-                        }
-                        RemoteKey {
-                            width: page.keyWidth; height: page.keyHeight
-                            button: page.slots.powerOff || null
-                            caption: "Off"
-                            keyColour: LuneOSButton.negativeColor
-                        }
-                        RemoteKey {
-                            width: page.keyWidth; height: page.keyHeight
-                            button: page.slots.source || null
-                            caption: "Input"
-                        }
-                        RemoteKey {
-                            width: page.keyWidth; height: page.keyHeight
-                            button: page.slots.mute || null
-                            caption: "Mute"
-                        }
-                    }
+                        Flow {
+                            width: parent.width
+                            spacing: Units.gu(1)
 
-                    // A camera remote is mostly the one key
-                    RemoteKey {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        width: parent.width * 0.6; height: page.keyHeight * 2
-                        button: page.slots.shutter || null
-                        caption: "Shutter"
-                        keyColour: LuneOSButton.negativeColor
-                        font.pixelSize: FontUtils.sizeToPixels("x-large")
+                            RemoteKey {
+                                width: page.keyWidth; height: page.keyHeight
+                                button: page.slots.power || null
+                                caption: "Power"
+                                keyColour: LuneOSButton.negativeColor
+                            }
+                            RemoteKey {
+                                width: page.keyWidth; height: page.keyHeight
+                                button: page.slots.powerOn || null
+                                caption: "On"
+                                keyColour: LuneOSButton.affirmativeColor
+                            }
+                            RemoteKey {
+                                width: page.keyWidth; height: page.keyHeight
+                                button: page.slots.powerOff || null
+                                caption: "Off"
+                                keyColour: LuneOSButton.negativeColor
+                            }
+                            RemoteKey {
+                                width: page.keyWidth; height: page.keyHeight
+                                button: page.slots.source || null
+                                caption: "Input"
+                            }
+                            RemoteKey {
+                                width: page.keyWidth; height: page.keyHeight
+                                button: page.slots.mute || null
+                                caption: "Mute"
+                            }
+                        }
+
+                        // A camera remote is mostly the one key
+                        RemoteKey {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            width: parent.width * 0.6; height: page.keyHeight * 2
+                            button: page.slots.shutter || null
+                            caption: "Shutter"
+                            keyColour: LuneOSButton.negativeColor
+                            font.pixelSize: FontUtils.sizeToPixels("x-large")
+                        }
                     }
                 }
-            }
 
-            GroupBox {
-                width: parent.width
-                visible: page.hasPad || page.rockers.length > 0 || page.menuKeys.length > 0
-                title: "Navigation"
-
-                Column {
+                GroupBox {
                     width: parent.width
-                    spacing: Units.gu(2)
+                    padding: page.groupPadding
+                    spacing: page.groupSpacing
+                    visible: page.hasPad || page.rockers.length > 0 || page.menuKeys.length > 0
+                    title: "Navigation"
 
-                    // Rockers either side of the arrow pad, the way a TV remote
-                    // has volume and channel; with no pad they sit side by side
-                    Row {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        spacing: Units.gu(3)
-                        visible: !page.stackedNavigation && (page.hasPad || page.rockers.length > 0)
+                    Column {
+                        width: parent.width
+                        spacing: appWindow.shortScreen ? Units.gu(1) : Units.gu(2)
 
-                        Rocker {
-                            readonly property var r: page.rockers.length > 0 ? page.rockers[0] : null
-                            anchors.verticalCenter: parent.verticalCenter
-                            label: r ? r.label : ""
-                            upButton: r ? (r.up || null) : null
-                            downButton: r ? (r.down || null) : null
-                        }
-
-                        DPad {
-                            anchors.verticalCenter: parent.verticalCenter
-                            slots: page.slots
-                            size: Math.max(Units.gu(16), Math.min(Units.gu(26), page.columnWidth - Units.gu(26)))
-                        }
-
-                        Repeater {
-                            model: page.rockers.slice(1)
+                        // Rockers either side of the arrow pad, the way a TV remote
+                        // has volume and channel; with no pad they sit side by side
+                        Row {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            spacing: appWindow.shortScreen ? Units.gu(1.5) : Units.gu(3)
+                            visible: !page.stackedNavigation && (page.hasPad || page.rockers.length > 0)
 
                             Rocker {
+                                keySize: page.rockerKeySize
+                                readonly property var r: page.rockers.length > 0 ? page.rockers[0] : null
                                 anchors.verticalCenter: parent.verticalCenter
-                                label: modelData.label
-                                upButton: modelData.up || null
-                                downButton: modelData.down || null
+                                label: r ? r.label : ""
+                                upButton: r ? (r.up || null) : null
+                                downButton: r ? (r.down || null) : null
+                            }
+
+                            DPad {
+                                anchors.verticalCenter: parent.verticalCenter
+                                slots: page.slots
+                                size: Math.max(Units.gu(15), Math.min(appWindow.shortScreen ? Units.gu(17) : Units.gu(26),
+                                                                  page.columnWidth - Units.gu(26)))
+                            }
+
+                            Repeater {
+                                model: page.rockers.slice(1)
+
+                                Rocker {
+                                    keySize: page.rockerKeySize
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    label: modelData.label
+                                    upButton: modelData.up || null
+                                    downButton: modelData.down || null
+                                }
+                            }
+
+                            // The menu keys, right of the pad where the screen is short
+                            Grid {
+                                anchors.verticalCenter: parent.verticalCenter
+                                visible: page.sideMenu
+                                columns: page.menuKeys.length > 4 ? 2 : 1
+                                spacing: Units.gu(0.5)
+
+                                Repeater {
+                                    model: page.sideMenu ? page.menuKeys : []
+
+                                    RemoteKey {
+                                        width: page.menuKeys.length > 4 ? page.keyWidth * 0.75 : page.keyWidth
+                                        height: page.keyHeight
+                                        button: modelData
+                                        font.pixelSize: FontUtils.sizeToPixels("small")
+                                    }
+                                }
+                            }
+                        }
+
+                        // The same on a narrow screen: the pad as wide as it can
+                        // usefully be, the rockers side by side beneath it
+                        DPad {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            visible: page.stackedNavigation && page.hasPad
+                            slots: page.slots
+                            size: Math.min(Units.gu(22), page.columnWidth - Units.gu(4))
+                        }
+
+                        Row {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            spacing: Units.gu(3)
+                            visible: page.stackedNavigation && page.rockers.length > 0
+
+                            Repeater {
+                                model: page.stackedNavigation ? page.rockers : []
+
+                                Rocker {
+                                    // Two of these side by side across a phone's width
+                                    keySize: Units.gu(6)
+                                    horizontal: true
+                                    label: modelData.label
+                                    upButton: modelData.up || null
+                                    downButton: modelData.down || null
+                                }
+                            }
+                        }
+
+                        Flow {
+                            width: parent.width
+                            spacing: Units.gu(1)
+                            visible: !page.sideMenu
+
+                            Repeater {
+                                model: page.sideMenu ? [] : page.menuKeys
+
+                                RemoteKey {
+                                    width: page.keyWidth; height: page.keyHeight
+                                    button: modelData
+                                }
                             }
                         }
                     }
+                }
 
-                    // The same on a narrow screen: the pad as wide as it can
-                    // usefully be, the rockers side by side beneath it
-                    DPad {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        visible: page.stackedNavigation && page.hasPad
-                        slots: page.slots
-                        size: Math.min(Units.gu(26), page.columnWidth - Units.gu(4))
-                    }
+            }
+        }
 
-                    Row {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        spacing: Units.gu(3)
-                        visible: page.stackedNavigation && page.rockers.length > 0
+        // Playback, the number pad and the colour keys under it, as on a TV remote
+        Flickable {
+            id: mediaPage
 
-                        Repeater {
-                            model: page.stackedNavigation ? page.rockers : []
+            contentWidth: width
+            contentHeight: mediaColumn.height + Units.gu(2)
+            flickableDirection: Flickable.VerticalFlick
+            clip: true
 
-                            Rocker {
-                                label: modelData.label
-                                upButton: modelData.up || null
-                                downButton: modelData.down || null
-                            }
-                        }
-                    }
+            Column {
+                id: mediaColumn
+
+                width: page.columnWidth
+                x: (parent.width - width) / 2
+                y: appWindow.shortScreen ? Units.gu(0.5) : Units.gu(1)
+                spacing: appWindow.shortScreen ? Units.gu(0.5) : Units.gu(1)
+
+                GroupBox {
+                    width: parent.width
+                    padding: page.groupPadding
+                    spacing: page.groupSpacing
+                    visible: page.transportKeys.length > 0
+                    title: "Playback"
 
                     Flow {
                         width: parent.width
                         spacing: Units.gu(1)
 
                         Repeater {
-                            model: page.menuKeys
+                            model: page.transportKeys
+
+                            RemoteKey {
+                                // Words, not symbols: the system font draws the
+                                // play and skip triangles as emoji
+                                readonly property var words: ({
+                                    "rewind": "Rewind", "play": "Play", "pause": "Pause", "stop": "Stop",
+                                    "forward": "Forward", "prev": "Previous", "next": "Next",
+                                    "record": "Record", "eject": "Eject"
+                                })
+                                readonly property string slot: {
+                                    for (var s in page.slots) {
+                                        if (page.slots[s] === modelData)
+                                            return s;
+                                    }
+                                    return "";
+                                }
+
+                                width: page.keyWidth; height: page.keyHeight
+                                button: modelData
+                                // play_pause is a toggle, and its own name says so
+                                caption: slot === "play" && ButtonMap.normalise(modelData[0]) !== "play"
+                                         ? "" : (words[slot] || "")
+                                keyColour: slot === "record" ? LuneOSButton.negativeColor : "transparent"
+                            }
+                        }
+                    }
+                }
+
+                GroupBox {
+                    width: parent.width
+                    padding: page.groupPadding
+                    spacing: page.groupSpacing
+                    visible: page.hasDigits
+                    title: "Numbers"
+
+                    Row {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        spacing: Units.gu(2)
+
+                        // Digits as a phone-style pad
+                        Grid {
+                            columns: 3
+                            spacing: Units.gu(1)
+
+                            Repeater {
+                                model: ["digit1", "digit2", "digit3", "digit4", "digit5", "digit6",
+                                        "digit7", "digit8", "digit9", "", "digit0", ""]
+
+                                Item {
+                                    width: page.keyWidth; height: page.keyHeight
+
+                                    RemoteKey {
+                                        anchors.fill: parent
+                                        button: modelData !== "" ? (page.slots[modelData] || null) : null
+                                        font.pixelSize: FontUtils.sizeToPixels("large")
+                                    }
+                                }
+                            }
+                        }
+
+                        // The colour keys, right of the digits where the screen is short
+                        Column {
+                            anchors.verticalCenter: parent.verticalCenter
+                            visible: page.sideColours
+                            spacing: Units.gu(0.5)
+
+                            Repeater {
+                                model: page.sideColours ? page.colourKeys : []
+
+                                RemoteKey {
+                                    width: page.keyWidth * 0.8
+                                    height: page.keyHeight * 0.75
+                                    button: modelData
+                                    caption: " "
+                                    keyColour: ButtonMap.colourFor(modelData[0])
+                                }
+                            }
+                        }
+                    }
+                }
+
+                GroupBox {
+                    width: parent.width
+                    padding: page.groupPadding
+                    spacing: page.groupSpacing
+                    visible: page.colourKeys.length > 0 && !page.sideColours
+                    title: "Colour keys"
+
+                    Row {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        spacing: Units.gu(1)
+
+                        Repeater {
+                            model: page.colourKeys
+
+                            RemoteKey {
+                                width: page.keyWidth * 0.8; height: page.keyHeight * 0.6
+                                button: modelData
+                                caption: " "
+                                keyColour: ButtonMap.colourFor(modelData[0])
+                            }
+                        }
+                    }
+                }
+
+            }
+        }
+
+        // Every key that fits no slot
+        Flickable {
+            id: morePage
+
+            contentWidth: width
+            contentHeight: moreColumn.height + Units.gu(2)
+            flickableDirection: Flickable.VerticalFlick
+            clip: true
+
+            Column {
+                id: moreColumn
+
+                width: page.columnWidth
+                x: (parent.width - width) / 2
+                y: appWindow.shortScreen ? Units.gu(0.5) : Units.gu(1)
+                spacing: appWindow.shortScreen ? Units.gu(0.5) : Units.gu(1)
+
+                GroupBox {
+                    width: parent.width
+                    padding: page.groupPadding
+                    spacing: page.groupSpacing
+                    visible: page.sorted.rest.length > 0
+                    title: "More keys"
+
+                    // Everything else, in the file's own order
+                    Flow {
+                        width: parent.width
+                        spacing: Units.gu(1)
+
+                        Repeater {
+                            model: page.sorted.rest
 
                             RemoteKey {
                                 width: page.keyWidth; height: page.keyHeight
                                 button: modelData
+                                keyColour: ButtonMap.colourFor(modelData[0]) || "transparent"
+                                font.pixelSize: FontUtils.sizeToPixels(text.length > 9 ? "small" : "medium")
                             }
-                        }
-                    }
-                }
-            }
-
-            GroupBox {
-                width: parent.width
-                visible: page.transportKeys.length > 0
-                title: "Playback"
-
-                Flow {
-                    width: parent.width
-                    spacing: Units.gu(1)
-
-                    Repeater {
-                        model: page.transportKeys
-
-                        RemoteKey {
-                            // Words, not symbols: the system font draws the
-                            // play and skip triangles as emoji
-                            readonly property var words: ({
-                                "rewind": "Rewind", "play": "Play", "pause": "Pause", "stop": "Stop",
-                                "forward": "Forward", "prev": "Previous", "next": "Next",
-                                "record": "Record", "eject": "Eject"
-                            })
-                            readonly property string slot: {
-                                for (var s in page.slots) {
-                                    if (page.slots[s] === modelData)
-                                        return s;
-                                }
-                                return "";
-                            }
-
-                            width: page.keyWidth; height: page.keyHeight
-                            button: modelData
-                            // play_pause is a toggle, and its own name says so
-                            caption: slot === "play" && ButtonMap.normalise(modelData[0]) !== "play"
-                                     ? "" : (words[slot] || "")
-                            keyColour: slot === "record" ? LuneOSButton.negativeColor : "transparent"
-                        }
-                    }
-                }
-            }
-
-            GroupBox {
-                width: parent.width
-                visible: page.colourKeys.length > 0
-                title: "Colour keys"
-
-                Row {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    spacing: Units.gu(1)
-
-                    Repeater {
-                        model: page.colourKeys
-
-                        RemoteKey {
-                            width: page.keyWidth * 0.8; height: page.keyHeight * 0.6
-                            button: modelData
-                            caption: " "
-                            keyColour: ButtonMap.colourFor(modelData[0])
-                        }
-                    }
-                }
-            }
-
-            GroupBox {
-                width: parent.width
-                visible: page.hasDigits
-                title: "Numbers"
-
-                // Digits as a phone-style pad
-                Grid {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    columns: 3
-                    spacing: Units.gu(1)
-
-                    Repeater {
-                        model: ["digit1", "digit2", "digit3", "digit4", "digit5", "digit6",
-                                "digit7", "digit8", "digit9", "", "digit0", ""]
-
-                        Item {
-                            width: page.keyWidth; height: page.keyHeight
-
-                            RemoteKey {
-                                anchors.fill: parent
-                                button: modelData !== "" ? (page.slots[modelData] || null) : null
-                                font.pixelSize: FontUtils.sizeToPixels("large")
-                            }
-                        }
-                    }
-                }
-            }
-
-            GroupBox {
-                width: parent.width
-                visible: page.sorted.rest.length > 0
-                title: "More keys"
-
-                // Everything else, in the file's own order
-                Flow {
-                    width: parent.width
-                    spacing: Units.gu(1)
-
-                    Repeater {
-                        model: page.sorted.rest
-
-                        RemoteKey {
-                            width: page.keyWidth; height: page.keyHeight
-                            button: modelData
-                            keyColour: ButtonMap.colourFor(modelData[0]) || "transparent"
-                            font.pixelSize: FontUtils.sizeToPixels(text.length > 9 ? "small" : "medium")
                         }
                     }
                 }
             }
         }
+    }
+
+    PageIndicator {
+        id: indicator
+
+        anchors.bottom: parent.bottom
+        anchors.horizontalCenter: parent.horizontalCenter
+        visible: pages.count > 1
+        height: visible ? implicitHeight : 0
+
+        count: pages.count
+        currentIndex: pages.currentIndex
+        interactive: true
+
+        onCurrentIndexChanged: pages.currentIndex = currentIndex
     }
 }

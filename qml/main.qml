@@ -53,6 +53,10 @@ WebOSWindow {
     // so letting go of volume-up stops the volume, not a queue behind it.
     property int pendingTransmits: 0
 
+    // The Q25's square and other screens with little height: smaller header,
+    // keys and rockers, and no explanation lines under the content
+    readonly property bool shortScreen: height < Units.gu(60)
+
     // RC5 and RC6 carry a toggle bit that flips on every new press, which is
     // how the receiver tells a second press from a held key
     property bool toggleBit: false
@@ -164,8 +168,9 @@ WebOSWindow {
         anchors.right: parent.right
         // The settings apps' header height, less of it where the screen has
         // little to spare - a phone's width, or the Q25's square
-        height: (appWindow.height < Units.gu(70) || appWindow.width < Units.gu(50))
-                ? Units.gu(7.5) : Units.gu(10)
+        height: appWindow.shortScreen ? Units.gu(5)
+              : (appWindow.height < Units.gu(70) || appWindow.width < Units.gu(50)) ? Units.gu(7.5)
+              : Units.gu(10)
 
         title: pageStack.currentItem && pageStack.currentItem.title ? pageStack.currentItem.title : "Remote"
         showBack: pageStack.depth > 1
