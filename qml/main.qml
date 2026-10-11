@@ -22,6 +22,7 @@ import LuneOS.Service 1.0
 // Units & font sizes
 import LunaNext.Common 0.1
 import LuneOS.Forms 1.0
+import LuneOS.System 1.0
 
 import "js/IrEncoder.js" as IrEncoder
 
@@ -72,12 +73,30 @@ AppWindow {
 
         name: "org.webosports.app.remote"
         usePrivateBus: true
-
-        onInitialized: appWindow.subscribeStatus()
     }
 
+    // Subscribed whenever the IR service is on the bus, not once at startup:
+    // a subscription ends without an error when the service restarts, and
+    // the app would then go on trusting the last status it had
+    ServiceStatus {
+        serviceName: "org.webosports.service.ir"
+        clientName: "org.webosports.app.remote"
+        onKnownChanged: if (known && !available) { appWindow.irChecked = true; appWindow.irAvailable = false; }
+        onAvailableChanged: {
+            if (available) {
+                appWindow.subscribeStatus();
+            } else if (known) {
+                appWindow.irChecked = true;
+                appWindow.irAvailable = false;
+            }
+        }
+    }
+
+    property var statusCall: null
     function subscribeStatus() {
-        irService.subscribe("luna://org.webosports.service.ir/getStatus",
+        if (statusCall)
+            statusCall.cancel();
+        statusCall = irService.subscribe("luna://org.webosports.service.ir/getStatus",
                             JSON.stringify({"subscribe": true}),
                             function(message) {
                                 var response = JSON.parse(message.payload);
