@@ -17,7 +17,6 @@
 import QtQuick 2.9
 import QtQuick.Controls 2.2
 
-import Eos.Window 0.1
 // LS2 access
 import LuneOS.Service 1.0
 // Units & font sizes
@@ -34,14 +33,18 @@ import "js/IrEncoder.js" as IrEncoder
  * itself (js/IrEncoder.js) and hands those to org.webosports.service.ir, which
  * owns the transmitter.
  */
-WebOSWindow {
+AppWindow {
     id: appWindow
 
-    width: Settings.displayWidth
-    height: Settings.displayHeight
-    visible: true
-    windowType: "_WEBOS_WINDOW_TYPE_CARD"
     title: "Remote"
+    icon: Qt.resolvedUrl("../icon.png")
+    initialPage: Qt.resolvedUrl("RemotesPage.qml")
+    // A tablet in a stand is often driven without the gesture area
+    showBack: true
+    // Less header still on a short screen than AppWindow's default gives
+    headerHeight: shortScreen ? Units.gu(5)
+                : (height < Units.gu(70) || width < Units.gu(50)) ? Units.gu(7.5)
+                : Units.gu(10)
 
     // Mirrors org.webosports.service.ir/getStatus
     property bool irAvailable: false
@@ -154,70 +157,24 @@ WebOSWindow {
         return true;
     }
 
-    // Behind the header and the notice; the pages paint their own gradient
-    Rectangle {
-        z: -1
-        anchors.fill: parent
-        color: "#D8D8D8"
-    }
+    // Between the header and the pages: AppWindow stacks what is declared
+    // inside here
+    Item {
+        width: appWindow.width
+        height: statusNotice.visible ? statusNotice.height + Units.gu(2) : 0
 
-    AppHeader {
-        id: header
+        StatusNotice {
+            id: statusNotice
 
-        anchors.top: parent.top
-        anchors.left: parent.left
-        anchors.right: parent.right
-        // The settings apps' header height, less of it where the screen has
-        // little to spare - a phone's width, or the Q25's square
-        height: appWindow.shortScreen ? Units.gu(5)
-              : (appWindow.height < Units.gu(70) || appWindow.width < Units.gu(50)) ? Units.gu(7.5)
-              : Units.gu(10)
+            x: Units.gu(1)
+            y: Units.gu(1)
+            width: parent.width - Units.gu(2)
 
-        title: pageStack.currentItem && pageStack.currentItem.title ? pageStack.currentItem.title : "Remote"
-        icon: Qt.resolvedUrl("../icon.png")
-        compact: width < Units.gu(50)
-        showBack: pageStack.depth > 1
-        actionComponent: pageStack.currentItem ? pageStack.currentItem.headerAction : null
-
-        onBackClicked: pageStack.pop()
-    }
-
-    StatusNotice {
-        id: statusNotice
-
-        anchors.top: header.bottom
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.margins: visible ? Units.gu(1) : 0
-
-        visible: text !== ""
-        text: appWindow.irChecked && !appWindow.irAvailable
-              ? "No infrared transmitter was found on this device, or org.webosports.service.ir is not running. Remotes can be set up, but keys will not send."
-              : appWindow.irError
-        onDismissed: appWindow.irError = ""
-    }
-
-    StackView {
-        id: pageStack
-
-        anchors.top: statusNotice.visible ? statusNotice.bottom : header.bottom
-        anchors.topMargin: statusNotice.visible ? Units.gu(1) : 0
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.bottom: parent.bottom
-
-        focus: true
-
-        // Pushed rather than given as initialItem: with the LuneOS style's
-        // StackView a URL there is silently ignored and the card stays empty
-        Component.onCompleted: push(Qt.resolvedUrl("RemotesPage.qml"))
-
-        // The back gesture arrives as Escape (see LunaNext.Common's EventType)
-        Keys.onReleased: function(event) {
-            if (event.key === Qt.Key_Escape && pageStack.depth > 1) {
-                pageStack.pop();
-                event.accepted = true;
-            }
+            visible: text !== ""
+            text: appWindow.irChecked && !appWindow.irAvailable
+                  ? "No infrared transmitter was found on this device, or org.webosports.service.ir is not running. Remotes can be set up, but keys will not send."
+                  : appWindow.irError
+            onDismissed: appWindow.irError = ""
         }
     }
 }
