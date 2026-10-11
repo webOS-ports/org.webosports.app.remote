@@ -40,8 +40,6 @@ AppWindow {
     title: "Remote"
     icon: Qt.resolvedUrl("../icon.png")
     initialPage: Qt.resolvedUrl("RemotesPage.qml")
-    // A tablet in a stand is often driven without the gesture area
-    showBack: true
     // Less header still on a short screen than AppWindow's default gives
     headerHeight: shortScreen ? Units.gu(5)
                 : (height < Units.gu(70) || width < Units.gu(50)) ? Units.gu(7.5)
