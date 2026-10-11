@@ -22,6 +22,7 @@ import Eos.Window 0.1
 import LuneOS.Service 1.0
 // Units & font sizes
 import LunaNext.Common 0.1
+import LuneOS.Forms 1.0
 
 import "js/IrEncoder.js" as IrEncoder
 
@@ -173,6 +174,8 @@ WebOSWindow {
               : Units.gu(10)
 
         title: pageStack.currentItem && pageStack.currentItem.title ? pageStack.currentItem.title : "Remote"
+        icon: Qt.resolvedUrl("../icon.png")
+        compact: width < Units.gu(50)
         showBack: pageStack.depth > 1
         actionComponent: pageStack.currentItem ? pageStack.currentItem.headerAction : null
 

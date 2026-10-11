@@ -26,7 +26,6 @@ import LunaNext.Common 0.1
 // ListDelegateSeparator, PromptDialog, ConfirmDialog
 import LuneOS.Components 1.0
 
-import "Common"
 import "js/Store.js" as Store
 
 /*

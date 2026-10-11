@@ -21,7 +21,7 @@ import QtQuick.Window 2.2
 // Units
 import LunaNext.Common 0.1
 
-import "Common"
+import LuneOS.Forms 1.0
 
 /*
  * What every page of the app is built on, after the settings apps' BasePage:
