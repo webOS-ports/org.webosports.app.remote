@@ -27,6 +27,8 @@ PickerPage {
     title: "Add Remote"
     groupTitle: "Choose a kind of device"
     explanation: "Not sure? Most TV remotes are under TVs; a remote for lights or LED strips is under LED Lighting."
+    // Not on a short screen, where the list needs the room
+    explanationOnShortScreen: false
     loading: true
     emptyText: "The remote database is missing from this install."
 

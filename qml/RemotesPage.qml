@@ -26,18 +26,20 @@ import LunaNext.Common 0.1
 // ListDelegateSeparator, PromptDialog, ConfirmDialog
 import LuneOS.Components 1.0
 
-import "Common"
 import "js/Store.js" as Store
+import LuneOS.Forms 1.0
 
 /*
  * The remotes the user has set up, laid out like the Wi-Fi page: one group
  * with the list, "Add Remote" at its foot the way Wi-Fi has "Join Network",
  * and touch-and-hold for rename and remove.
  */
-BasePage {
+AppPage {
     id: page
 
     title: "Remote"
+    // Not on a short screen, where the page needs the room
+    explanationOnShortScreen: false
     explanation: remotes.length > 0
                  ? "Point this device at the one you want to control. Touch and hold a remote to rename or remove it."
                  : "Add one for your TV, sound bar, projector, fan, air conditioner or light strip, and this device becomes its remote."

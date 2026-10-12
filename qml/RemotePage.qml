@@ -24,6 +24,7 @@ import LunaNext.Common 0.1
 
 import "js/ButtonMap.js" as ButtonMap
 import "js/Store.js" as Store
+import LuneOS.Forms 1.0
 
 /*
  * A remote, laid out from whatever keys its database file has.
@@ -36,7 +37,7 @@ import "js/Store.js" as Store
  * brightness. Every key that fits no slot is still there, in the grid at the
  * bottom, under the name its contributor gave it.
  */
-BasePage {
+AppPage {
     id: page
 
     property var remote
@@ -47,6 +48,8 @@ BasePage {
     property int remoteId: -1
 
     title: remoteName
+    // Not on a short screen, where the page needs the room
+    explanationOnShortScreen: false
     explanation: saved ? "" : "Try a few keys. If the device answers, Save keeps this remote; if not, go back and try the next model."
 
     readonly property var sorted: ButtonMap.classify(remote ? remote.buttons : [])
