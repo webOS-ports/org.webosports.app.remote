@@ -225,8 +225,6 @@ TestCase {
         hold("Living room TV", "Rename");
         verify(dialog("prompt").visible);
         compare(names(), ["Living room TV", "Bedroom fan"]);
-        // Last, as an expected failure ends the test function
-        expectFail("", "the field is bound to the remote's name, which did not change, so it keeps what was typed");
         compare(byName("promptField").text, "Living room TV");
     }
 
