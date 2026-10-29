@@ -172,6 +172,30 @@ AppPage {
         }
     }
 
+    function rename(remote) {
+        renameDialog.ask({
+            "title": "Rename remote",
+            "text": remote.name,
+            "onAccepted": function(text) {
+                if (text.trim() !== "") {
+                    Store.rename(remote.id, text.trim());
+                    page.reload();
+                }
+            }
+        });
+    }
+
+    function remove(remote) {
+        removeDialog.ask({
+            "title": "Remove remote",
+            "message": "Remove " + remote.name + "?",
+            "onAccepted": function() {
+                Store.remove(remote.id);
+                page.reload();
+            }
+        });
+    }
+
     Menu {
         id: remoteMenu
 
@@ -179,11 +203,11 @@ AppPage {
 
         MenuItem {
             text: "Rename"
-            onTriggered: renameDialog.visible = true
+            onTriggered: page.rename(remoteMenu.remote)
         }
         MenuItem {
             text: "Remove"
-            onTriggered: removeDialog.visible = true
+            onTriggered: page.remove(remoteMenu.remote)
         }
     }
 
@@ -191,31 +215,11 @@ AppPage {
         id: renameDialog
 
         visible: false
-        title: "Rename remote"
-        defaultValue: remoteMenu.remote ? remoteMenu.remote.name : ""
-
-        onAccepted: function(text) {
-            if (text.trim() !== "") {
-                Store.rename(remoteMenu.remote.id, text.trim());
-                page.reload();
-            }
-            visible = false;
-        }
-        onRejected: visible = false
     }
 
     ConfirmDialog {
         id: removeDialog
 
         visible: false
-        title: "Remove remote"
-        message: remoteMenu.remote ? "Remove " + remoteMenu.remote.name + "?" : ""
-
-        onAccepted: {
-            Store.remove(remoteMenu.remote.id);
-            page.reload();
-            visible = false;
-        }
-        onRejected: visible = false
     }
 }
