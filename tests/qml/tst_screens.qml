@@ -310,6 +310,15 @@ TestCase {
         verify(over.length === 0, "on top of each other: " + over.join(", "));
         verify(cut.length === 0, "names cut off at a size they could shrink from: " + cut.join(", "));
         var more = find(current.contentItem, function(i) { return i instanceof GroupBox && i.title === "More keys" && shown(i); });
+        // All of More keys in one text size
+        if (more) {
+            var sizes = {};
+            findAll(more.contentItem, function(i) { return keys.indexOf(i) >= 0; }, []).forEach(function(k) {
+                var lt = k.contentItem.item || k.contentItem;
+                sizes[lt.fontInfo.pixelSize] = (sizes[lt.fontInfo.pixelSize] || 0) + 1;
+            });
+            verify(Object.keys(sizes).length <= 1, label + ": More keys in several sizes: " + JSON.stringify(sizes));
+        }
         // A full row of them, that is: four
         var inMore = more ? findAll(more.contentItem, function(i) { return keys.indexOf(i) >= 0; }, []) : [];
         if (inMore.length >= 4) {

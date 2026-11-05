@@ -655,15 +655,89 @@ AppPage {
                         columns: 4
                         spacing: Units.gu(1)
 
+                        readonly property real keyWidth: (width - (columns - 1) * spacing) / columns
+                        // One text size for every key: the largest, from
+                        // "medium" down to "x-small", at which each label fits
+                        // in the lines a key has room for. A name too long even
+                        // at "x-small" is cut off with "…" at that same size.
+                        property real labelPixelSize: FontUtils.sizeToPixels("medium")
+                        property int labelLines: 1
+
+                        function measure() {
+                            var first = null;
+                            for (var i = 0; i < children.length; i++) {
+                                if (children[i].visible && children[i].availableWidth !== undefined) {
+                                    first = children[i];
+                                    break;
+                                }
+                            }
+                            if (!first || first.availableWidth <= 0)
+                                return;
+                            // A little under the width: the label's own
+                            // rounding, so a name measured to fit does fit
+                            var room = first.availableWidth - 2;
+                            var high = FontUtils.sizeToPixels("medium");
+                            // Whole pixels, as a key's own minimumPixelSize is
+                            var low = Math.floor(FontUtils.sizeToPixels("x-small"));
+                            labelMetrics.font.family = first.font.family;
+                            labelMetrics.font.weight = first.font.weight;
+                            var names = page.sorted.rest.map(function(b) { return ButtonMap.label(b[0]); });
+                            // Whole pixels down, then the smallest itself
+                            var sizes = [];
+                            for (var p = Math.floor(high); p > low; p--)
+                                sizes.push(p);
+                            sizes.push(low);
+                            for (var si = 0; si < sizes.length; si++) {
+                                var px = sizes[si];
+                                labelMetrics.font.pixelSize = px;
+                                // The height of a line: of some text, as empty text has none
+                                labelMetrics.text = "Ag";
+                                var lines = Math.max(1, Math.floor(first.availableHeight / (labelMetrics.height * 1.05)));
+                                var all = names.every(function(name) {
+                                    var words = name.split(/\s+/);
+                                    var used = 1, line = 0;
+                                    for (var w = 0; w < words.length; w++) {
+                                        labelMetrics.text = (line > 0 ? " " : "") + words[w];
+                                        var add = labelMetrics.advanceWidth;
+                                        labelMetrics.text = words[w];
+                                        if (labelMetrics.advanceWidth > room)
+                                            return false;
+                                        if (line > 0 && line + add > room) {
+                                            used++;
+                                            line = labelMetrics.advanceWidth;
+                                        } else {
+                                            line += add;
+                                        }
+                                    }
+                                    return used <= lines;
+                                });
+                                labelLines = lines;
+                                labelPixelSize = px;
+                                if (all)
+                                    return;
+                            }
+                        }
+
+                        TextMetrics {
+                            id: labelMetrics
+                        }
+
+                        readonly property real keyHeight: page.keyHeight
+                        onKeyHeightChanged: Qt.callLater(measure)
+                        onKeyWidthChanged: Qt.callLater(measure)
+                        onChildrenChanged: Qt.callLater(measure)
+                        Component.onCompleted: Qt.callLater(measure)
+
                         Repeater {
                             model: page.sorted.rest
 
                             RemoteKey {
-                                width: (moreGrid.width - (moreGrid.columns - 1) * moreGrid.spacing) / moreGrid.columns
+                                width: moreGrid.keyWidth
                                 height: page.keyHeight
                                 button: modelData
                                 keyColour: ButtonMap.colourFor(modelData[0]) || "transparent"
-                                font.pixelSize: FontUtils.sizeToPixels(text.length > 9 ? "small" : "medium")
+                                sharedPixelSize: moreGrid.labelPixelSize
+                                sharedLines: moreGrid.labelLines
                             }
                         }
                     }
