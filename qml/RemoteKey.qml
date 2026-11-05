@@ -38,6 +38,11 @@ Button {
     // Overrides the label from the button's own name
     property string caption: ""
     property color keyColour: "transparent"
+    // Keys side by side that should look alike (More keys) are all drawn at
+    // one size, in at most this many lines, and cut off with "…" past them
+    // rather than each shrinking on its own: 0 for the key's own fitting.
+    property real sharedPixelSize: 0
+    property int sharedLines: 1
 
     visible: button !== null
     text: caption !== "" ? caption : (button ? ButtonMap.label(button[0]) : "")
@@ -47,6 +52,26 @@ Button {
     // White on the coloured keys, dark on the plain light ones, as the
     // theme's own secondary buttons have it
     LuneOSButton.textColor: keyColour.a > 0 && keyColour.hslLightness < 0.65 ? "white" : "#2b2b2b"
+
+    // The style's label is one line, cut off where it is too long: the
+    // database's names ("Open/Close", "Aurora Purple") get more lines and a
+    // smaller size, as many as the key's height has room for, and only then
+    // the "…". No maximumLineCount: Text.Fit counts lines it drops as fitting.
+    contentItem: Text {
+        text: key.text
+        font.family: key.font.family
+        font.weight: key.font.weight
+        font.pixelSize: key.sharedPixelSize > 0 ? key.sharedPixelSize : key.font.pixelSize
+        color: key.LuneOSButton.textColor
+        opacity: key.enabled ? 1 : 0.4
+        horizontalAlignment: Text.AlignHCenter
+        verticalAlignment: Text.AlignVCenter
+        wrapMode: Text.WordWrap
+        maximumLineCount: key.sharedPixelSize > 0 ? key.sharedLines : 2147483647
+        fontSizeMode: key.sharedPixelSize > 0 ? Text.FixedSize : Text.Fit
+        minimumPixelSize: FontUtils.sizeToPixels("x-small")
+        elide: Text.ElideRight
+    }
 
     onPressed: {
         if (button !== null) {

@@ -184,6 +184,7 @@ AppPage {
     // Which page of keys is showing
     property alias keyPage: pages.currentIndex
 
+    readonly property bool hasControlPage: hasPowerRow || hasPad || rockers.length > 0 || menuKeys.length > 0
     readonly property bool hasMediaPage: transportKeys.length > 0 || colourKeys.length > 0 || hasDigits
     readonly property bool hasMorePage: sorted.rest.length > 0
 
@@ -203,12 +204,19 @@ AppPage {
         anchors.bottom: indicator.top
         clip: true
 
-        // A remote without media keys or extra keys has no use for their page
+        // A remote without media keys or extra keys has no use for their
+        // page, nor one with only numbered keys for the first: it opens on
+        // the first page that has keys. Taken out, not removed: removeItem()
+        // destroys the page while the sizes above still read it (fitDigitKey
+        // reads mediaPage), which logged TypeErrors on a climate or fan remote.
         Component.onCompleted: {
             if (!page.hasMorePage)
-                removeItem(morePage);
+                takeItem(morePage.SwipeView.index);
             if (!page.hasMediaPage)
-                removeItem(mediaPage);
+                takeItem(mediaPage.SwipeView.index);
+            if (!page.hasControlPage && count > 1)
+                takeItem(controlPage.SwipeView.index);
+            currentIndex = 0;
         }
 
         // Power, volume, channel and the arrows
@@ -371,12 +379,33 @@ AppPage {
                             size: Math.min(Units.gu(22), page.columnWidth - Units.gu(4))
                         }
 
-                        Row {
+                        // As many side by side as the width takes, the rest
+                        // on rows under them: a light's brightness, speed and
+                        // volume are three, and three are wider than a phone
+                        Grid {
                             anchors.horizontalCenter: parent.horizontalCenter
-                            spacing: Units.gu(3)
+                            columnSpacing: Units.gu(3)
+                            rowSpacing: Units.gu(1)
+                            horizontalItemAlignment: Grid.AlignHCenter
                             visible: page.stackedNavigation && page.rockers.length > 0
+                            columns: {
+                                var used = 0, n = 0;
+                                for (var i = 0; i < children.length; i++) {
+                                    var r = children[i];
+                                    if (r === stackedRockers || !r.visible)
+                                        continue;
+                                    var w = used + (n > 0 ? columnSpacing : 0) + r.width;
+                                    if (n > 0 && w > parent.width)
+                                        break;
+                                    used = w;
+                                    n++;
+                                }
+                                return Math.max(1, n);
+                            }
 
                             Repeater {
+                                id: stackedRockers
+
                                 model: page.stackedNavigation ? page.rockers : []
 
                                 Rocker {
@@ -617,19 +646,98 @@ AppPage {
                     visible: page.sorted.rest.length > 0
                     title: "More keys"
 
-                    // Everything else, in the file's own order
-                    Flow {
+                    // Everything else, in the file's own order, four to a row
+                    // across the whole width of the box
+                    Grid {
+                        id: moreGrid
+
                         width: parent.width
+                        columns: 4
                         spacing: Units.gu(1)
+
+                        readonly property real keyWidth: (width - (columns - 1) * spacing) / columns
+                        // One text size for every key: the largest, from
+                        // "medium" down to "x-small", at which each label fits
+                        // in the lines a key has room for. A name too long even
+                        // at "x-small" is cut off with "…" at that same size.
+                        property real labelPixelSize: FontUtils.sizeToPixels("medium")
+                        property int labelLines: 1
+
+                        function measure() {
+                            var first = null;
+                            for (var i = 0; i < children.length; i++) {
+                                if (children[i].visible && children[i].availableWidth !== undefined) {
+                                    first = children[i];
+                                    break;
+                                }
+                            }
+                            if (!first || first.availableWidth <= 0)
+                                return;
+                            // A little under the width: the label's own
+                            // rounding, so a name measured to fit does fit
+                            var room = first.availableWidth - 2;
+                            var high = FontUtils.sizeToPixels("medium");
+                            // Whole pixels, as a key's own minimumPixelSize is
+                            var low = Math.floor(FontUtils.sizeToPixels("x-small"));
+                            labelMetrics.font.family = first.font.family;
+                            labelMetrics.font.weight = first.font.weight;
+                            var names = page.sorted.rest.map(function(b) { return ButtonMap.label(b[0]); });
+                            // Whole pixels down, then the smallest itself
+                            var sizes = [];
+                            for (var p = Math.floor(high); p > low; p--)
+                                sizes.push(p);
+                            sizes.push(low);
+                            for (var si = 0; si < sizes.length; si++) {
+                                var px = sizes[si];
+                                labelMetrics.font.pixelSize = px;
+                                // The height of a line: of some text, as empty text has none
+                                labelMetrics.text = "Ag";
+                                var lines = Math.max(1, Math.floor(first.availableHeight / (labelMetrics.height * 1.05)));
+                                var all = names.every(function(name) {
+                                    var words = name.split(/\s+/);
+                                    var used = 1, line = 0;
+                                    for (var w = 0; w < words.length; w++) {
+                                        labelMetrics.text = (line > 0 ? " " : "") + words[w];
+                                        var add = labelMetrics.advanceWidth;
+                                        labelMetrics.text = words[w];
+                                        if (labelMetrics.advanceWidth > room)
+                                            return false;
+                                        if (line > 0 && line + add > room) {
+                                            used++;
+                                            line = labelMetrics.advanceWidth;
+                                        } else {
+                                            line += add;
+                                        }
+                                    }
+                                    return used <= lines;
+                                });
+                                labelLines = lines;
+                                labelPixelSize = px;
+                                if (all)
+                                    return;
+                            }
+                        }
+
+                        TextMetrics {
+                            id: labelMetrics
+                        }
+
+                        readonly property real keyHeight: page.keyHeight
+                        onKeyHeightChanged: Qt.callLater(measure)
+                        onKeyWidthChanged: Qt.callLater(measure)
+                        onChildrenChanged: Qt.callLater(measure)
+                        Component.onCompleted: Qt.callLater(measure)
 
                         Repeater {
                             model: page.sorted.rest
 
                             RemoteKey {
-                                width: page.keyWidth; height: page.keyHeight
+                                width: moreGrid.keyWidth
+                                height: page.keyHeight
                                 button: modelData
                                 keyColour: ButtonMap.colourFor(modelData[0]) || "transparent"
-                                font.pixelSize: FontUtils.sizeToPixels(text.length > 9 ? "small" : "medium")
+                                sharedPixelSize: moreGrid.labelPixelSize
+                                sharedLines: moreGrid.labelLines
                             }
                         }
                     }

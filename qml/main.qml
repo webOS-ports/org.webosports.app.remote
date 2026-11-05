@@ -64,7 +64,9 @@ AppWindow {
     // how the receiver tells a second press from a held key
     property bool toggleBit: false
 
-    readonly property string databaseUrl: Qt.resolvedUrl("../irdb/")
+    // Where the installed database is; the host tests point it at
+    // tests/data/irdb, a few remotes of it
+    property string databaseUrl: Qt.resolvedUrl("../irdb/")
 
     LunaService {
         id: irService

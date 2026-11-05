@@ -46,6 +46,36 @@ For a quick try on a device over adb:
 
     tools/deploy.sh /path/to/Flipper-IRDB [adb serial]
 
+Tests
+-----
+
+On the build host, with luneos-components' desktop build (`CONFIG+=desktop`,
+see its README):
+
+    tests/run-qml-tests.sh /path/to/luneos-components
+
+- `tests/qml/tst_ui.qml`, once: touch and hold a remote, Rename and Remove,
+  answered with the dialogs' buttons.
+- `tests/qml/tst_screens.qml`, once per device screen in `PROFILES` (by
+  default `mindphone q25 tp radon`: 480x800, 720x720, 1024x768 and the
+  FuriPhone FLX1s' 720x1600 with its notch and rounded corners), each run
+  with that screen's size and grid unit: the remotes, empty and not, the hold
+  menu, Rename and Remove, the no-transmitter and send-failed notices, adding
+  a remote (kinds, brands, models with Try, the remote on trial with Save),
+  and a saved remote of each layout (TV, media, audio, climate, fan, light,
+  camera, generic), every page of its keys. Each screen is checked for being
+  shown, inside the window, not wider than it, keys not on top of each
+  other, no page without keys, key names cut off only at the smallest size
+  a key's text may take, and the extra keys across their box's width, and
+  saved as `build/test-output/ui/<profile>-<screen>.png`, with the panel's
+  notch and corners painted black on radon. A warning from the app's own
+  QML (a TypeError in a binding) fails the test it shows in.
+
+The screens read their codes from `tests/data/irdb`: a few categories made by
+`tools/build-irdb.py` from Flipper-IRDB (CC0-1.0) - for each, its first three
+brands' first two remotes and the remote with the most keys. `PROFILES=q25`
+runs one screen, `TESTS=` skips `tst_ui.qml`.
+
 Licence
 -------
 
