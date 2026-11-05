@@ -48,6 +48,23 @@ Button {
     // theme's own secondary buttons have it
     LuneOSButton.textColor: keyColour.a > 0 && keyColour.hslLightness < 0.65 ? "white" : "#2b2b2b"
 
+    // The style's label is one line, cut off where it is too long: the
+    // database's names ("Open/Close", "Aurora Purple") get more lines and a
+    // smaller size, as many as the key's height has room for, and only then
+    // the "…". No maximumLineCount: Text.Fit counts lines it drops as fitting.
+    contentItem: Text {
+        text: key.text
+        font: key.font
+        color: key.LuneOSButton.textColor
+        opacity: key.enabled ? 1 : 0.4
+        horizontalAlignment: Text.AlignHCenter
+        verticalAlignment: Text.AlignVCenter
+        wrapMode: Text.WordWrap
+        fontSizeMode: Text.Fit
+        minimumPixelSize: FontUtils.sizeToPixels("x-small")
+        elide: Text.ElideRight
+    }
+
     onPressed: {
         if (button !== null) {
             appWindow.transmit(button, true);

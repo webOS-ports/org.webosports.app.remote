@@ -57,8 +57,7 @@ TestCase {
         { layout: "fan", category: "Fans", file: "Fans/101", brand: "Fan", model: "FV-30BG1x" },
         { layout: "light", category: "LED_Lighting", file: "LED_Lighting/2", brand: "Airivo", model: "NorthernLights" },
         // 256 keys, numbered 1 to 256, and nothing else
-        { layout: "light", category: "LED_Lighting", file: "LED_Lighting/137", brand: "LED", model: "LEDStrip", shot: "light-numbered",
-          emptyFirst: true },
+        { layout: "light", category: "LED_Lighting", file: "LED_Lighting/137", brand: "LED", model: "LEDStrip", shot: "light-numbered" },
         { layout: "camera", category: "Cameras", file: "Cameras/21", brand: "Camera", model: "NDI HX PTZOptics NDI HX CAM1" },
         { layout: "generic", category: "Bidet", file: "Bidet/2", brand: "Bidet", model: "bb2000" }
     ]
@@ -66,6 +65,13 @@ TestCase {
     Component {
         id: panelShape
         PanelShape {}
+    }
+
+    // A warning from the app's own QML (a TypeError in a binding, a binding
+    // loop) fails the test it shows in: the climate and fan remotes logged
+    // TypeErrors for a page their remote had no use for.
+    function init() {
+        failOnWarning(new RegExp(Qt.resolvedUrl("../../qml/").toString().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
     }
 
     function init_data() {
@@ -264,71 +270,58 @@ TestCase {
         return current;
     }
 
-    function inside(item, test) {
-        for (var i = item.parent; i; i = i.parent) {
-            if (test(i))
-                return true;
-        }
-        return false;
-    }
-
     // Every key on the remote's current page: shown ones not empty, inside
-    // the window left to right, and none over another. Returns how many
-    // there are.
-    //
-    // Two faults the app has are let through as expected failures, and
-    // only where they show: the rockers in a row under the arrow pad on a
-    // narrow screen, sized for two, run off both sides with three (a
-    // light's brightness, speed and volume); and on the Q25 the arrows
-    // overlap OK by a pixel or two, OK being 1.15 keys wide on a pad too
-    // small for that.
+    // the window left to right, none over another, its name not cut off
+    // where it could be made smaller, and the extra keys across the whole
+    // width of their box. Returns how many there are.
     function keysFit(label) {
         var current = keyPage();
         var keys = findAll(current.contentItem, function(i) {
             return i instanceof Button && i.hasOwnProperty("button") && i.hasOwnProperty("caption") && shown(i);
         }, []);
-        var off = [], rowOff = [];
+        var off = [], cut = [];
         var boxes = [];
         for (var k = 0; k < keys.length; k++) {
             var key = keys[k];
             var name = label + " key " + (key.text || k);
             verify(key.width > 0 && key.height > 0, name + " has no size: " + key.width + "x" + key.height);
             var w = key.mapToItem(null, 0, 0);
-            if (w.x < -0.5 || w.x + key.width > app.width + 0.5) {
-                var inRow = page().stackedNavigation
-                            && inside(key, function(i) { return i.hasOwnProperty("upButton") && i.horizontal === true; });
-                (inRow ? rowOff : off).push(name + " at x " + Math.round(w.x));
-            }
+            if (w.x < -0.5 || w.x + key.width > app.width + 0.5)
+                off.push(name + " at x " + Math.round(w.x));
+            // A name is cut off only once it is as small as a key's text
+            // may be: the style's label, one line, cut them off at full size
+            var t = key.contentItem.item || key.contentItem;
+            if (t.truncated && t.fontInfo.pixelSize > t.minimumPixelSize + 0.5)
+                cut.push(name + " at " + t.fontInfo.pixelSize + " px");
             var p = key.mapToItem(current.contentItem, 0, 0);
-            boxes.push({ x: p.x, y: p.y, w: key.width, h: key.height, name: name, ok: key.caption === "OK",
-                         pad: inside(key, function(i) { return i.hasOwnProperty("slots") && i.hasOwnProperty("keySize"); }) });
+            boxes.push({ x: p.x, y: p.y, w: key.width, h: key.height, name: name });
         }
-        var over = [], padOver = [];
+        var over = [];
         for (var a = 0; a < boxes.length; a++) {
             for (var b = a + 1; b < boxes.length; b++) {
                 var A = boxes[a], B = boxes[b];
                 var dx = Math.min(A.x + A.w, B.x + B.w) - Math.max(A.x, B.x);
                 var dy = Math.min(A.y + A.h, B.y + B.h) - Math.max(A.y, B.y);
-                if (dx > 1 && dy > 1) {
-                    var aroundOk = A.pad && B.pad && (A.ok || B.ok) && Math.min(dx, dy) < Units.gu(0.5);
-                    (aroundOk ? padOver : over).push(A.name + " over " + B.name + " by " + Math.min(dx, dy).toFixed(1));
-                }
+                if (dx > 1 && dy > 1)
+                    over.push(A.name + " over " + B.name + " by " + Math.min(dx, dy).toFixed(1));
             }
         }
         verify(off.length === 0, "off the side: " + off.join(", "));
         verify(over.length === 0, "on top of each other: " + over.join(", "));
-        if (rowOff.length > 0) {
-            expectFailContinue("", "The rockers under the pad are sized for two side by side");
-            verify(rowOff.length === 0, "off the side: " + rowOff.join(", "));
+        verify(cut.length === 0, "names cut off at a size they could shrink from: " + cut.join(", "));
+        var more = find(current.contentItem, function(i) { return i instanceof GroupBox && i.title === "More keys" && shown(i); });
+        // A full row of them, that is: four
+        var inMore = more ? findAll(more.contentItem, function(i) { return keys.indexOf(i) >= 0; }, []) : [];
+        if (inMore.length >= 4) {
+            var right = 0;
+            for (k = 0; k < inMore.length; k++)
+                right = Math.max(right, inMore[k].mapToItem(more.contentItem, inMore[k].width, 0).x);
+            verify(Math.abs(right - more.contentItem.width) <= 1,
+                   label + ": the extra keys end at " + right.toFixed(1) + " of the box's " + more.contentItem.width);
         }
-        if (padOver.length > 0) {
-            expectFailContinue("", "OK is wider than the room the arrows leave it on a small pad");
-            verify(padOver.length === 0, "arrows over OK: " + padOver.join(", "));
-        }
-        // contentWidth is the page's own width: what is in it must fit that,
-        // but for those rockers
+        // contentWidth is the page's own width: what is in it must fit that
         var r = current.contentItem.childrenRect;
-        verify(rowOff.length > 0 || (r.x >= -0.5 && r.x + r.width <= current.width + 0.5),
+        verify(r.x >= -0.5 && r.x + r.width <= current.width + 0.5,
                label + " wider than the window: " + r.x + " + " + r.width + " of " + current.width);
         return keys.length;
     }
@@ -434,7 +427,7 @@ TestCase {
 
     function test_remotes_by_layout_data() {
         return layouts.map(function(l) {
-            return { tag: profile + " " + (l.shot || l.layout), shot: l.shot || l.layout, emptyFirst: !!l.emptyFirst,
+            return { tag: profile + " " + (l.shot || l.layout), shot: l.shot || l.layout,
                      layout: l.layout, category: l.category, file: l.file,
                      brand: l.brand, model: l.model };
         });
@@ -448,10 +441,7 @@ TestCase {
         settle();
         tryVerify(function() { return page().remoteName === name; }, 5000, "the " + data.layout + " remote opens");
         verify(page().saved);
-        var empty = shootRemote("remote-" + data.shot);
-        if (data.emptyFirst)
-            expectFail("", "A remote with only numbered keys has them all on its second page: the first is empty");
-        compare(empty, [], "pages without a key");
+        compare(shootRemote("remote-" + data.shot), [], "pages without a key");
     }
 
     function test_send_failed() {

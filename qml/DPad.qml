@@ -29,7 +29,10 @@ Rectangle {
     property var slots: ({})
     property real size: Units.gu(24)
 
-    readonly property real keySize: size / 3.3
+    // OK is 1.15 keys wide, with an arrow and the pad's margin either side
+    // of it: on a small pad (the Q25's) size / 3.3 left the arrows over OK,
+    // so the keys are no bigger than leaves a gap between them
+    readonly property real keySize: Math.min(size / 3.3, (size - Units.gu(1.5)) / 3.15)
 
     visible: slots.up !== undefined || slots.down !== undefined ||
              slots.left !== undefined || slots.right !== undefined

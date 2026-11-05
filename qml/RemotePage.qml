@@ -184,6 +184,7 @@ AppPage {
     // Which page of keys is showing
     property alias keyPage: pages.currentIndex
 
+    readonly property bool hasControlPage: hasPowerRow || hasPad || rockers.length > 0 || menuKeys.length > 0
     readonly property bool hasMediaPage: transportKeys.length > 0 || colourKeys.length > 0 || hasDigits
     readonly property bool hasMorePage: sorted.rest.length > 0
 
@@ -203,12 +204,19 @@ AppPage {
         anchors.bottom: indicator.top
         clip: true
 
-        // A remote without media keys or extra keys has no use for their page
+        // A remote without media keys or extra keys has no use for their
+        // page, nor one with only numbered keys for the first: it opens on
+        // the first page that has keys. Taken out, not removed: removeItem()
+        // destroys the page while the sizes above still read it (fitDigitKey
+        // reads mediaPage), which logged TypeErrors on a climate or fan remote.
         Component.onCompleted: {
             if (!page.hasMorePage)
-                removeItem(morePage);
+                takeItem(morePage.SwipeView.index);
             if (!page.hasMediaPage)
-                removeItem(mediaPage);
+                takeItem(mediaPage.SwipeView.index);
+            if (!page.hasControlPage && count > 1)
+                takeItem(controlPage.SwipeView.index);
+            currentIndex = 0;
         }
 
         // Power, volume, channel and the arrows
@@ -371,12 +379,33 @@ AppPage {
                             size: Math.min(Units.gu(22), page.columnWidth - Units.gu(4))
                         }
 
-                        Row {
+                        // As many side by side as the width takes, the rest
+                        // on rows under them: a light's brightness, speed and
+                        // volume are three, and three are wider than a phone
+                        Grid {
                             anchors.horizontalCenter: parent.horizontalCenter
-                            spacing: Units.gu(3)
+                            columnSpacing: Units.gu(3)
+                            rowSpacing: Units.gu(1)
+                            horizontalItemAlignment: Grid.AlignHCenter
                             visible: page.stackedNavigation && page.rockers.length > 0
+                            columns: {
+                                var used = 0, n = 0;
+                                for (var i = 0; i < children.length; i++) {
+                                    var r = children[i];
+                                    if (r === stackedRockers || !r.visible)
+                                        continue;
+                                    var w = used + (n > 0 ? columnSpacing : 0) + r.width;
+                                    if (n > 0 && w > parent.width)
+                                        break;
+                                    used = w;
+                                    n++;
+                                }
+                                return Math.max(1, n);
+                            }
 
                             Repeater {
+                                id: stackedRockers
+
                                 model: page.stackedNavigation ? page.rockers : []
 
                                 Rocker {
@@ -617,16 +646,21 @@ AppPage {
                     visible: page.sorted.rest.length > 0
                     title: "More keys"
 
-                    // Everything else, in the file's own order
-                    Flow {
+                    // Everything else, in the file's own order, four to a row
+                    // across the whole width of the box
+                    Grid {
+                        id: moreGrid
+
                         width: parent.width
+                        columns: 4
                         spacing: Units.gu(1)
 
                         Repeater {
                             model: page.sorted.rest
 
                             RemoteKey {
-                                width: page.keyWidth; height: page.keyHeight
+                                width: (moreGrid.width - (moreGrid.columns - 1) * moreGrid.spacing) / moreGrid.columns
+                                height: page.keyHeight
                                 button: modelData
                                 keyColour: ButtonMap.colourFor(modelData[0]) || "transparent"
                                 font.pixelSize: FontUtils.sizeToPixels(text.length > 9 ? "small" : "medium")

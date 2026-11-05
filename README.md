@@ -64,13 +64,12 @@ see its README):
   a remote (kinds, brands, models with Try, the remote on trial with Save),
   and a saved remote of each layout (TV, media, audio, climate, fan, light,
   camera, generic), every page of its keys. Each screen is checked for being
-  shown, inside the window, not wider than it, and keys not on top of each
-  other, and saved as `build/test-output/ui/<profile>-<screen>.png`, with the
-  panel's notch and corners painted black on radon. Three faults show as
-  expected failures (XFAIL) until they are fixed: a remote whose keys are
-  all numbered (the LED strip) opens on an empty first page; on a narrow
-  screen a light's three rockers under the arrow pad run off both sides;
-  on the Q25 the arrows overlap OK by a pixel or two.
+  shown, inside the window, not wider than it, keys not on top of each
+  other, no page without keys, key names cut off only at the smallest size
+  a key's text may take, and the extra keys across their box's width, and
+  saved as `build/test-output/ui/<profile>-<screen>.png`, with the panel's
+  notch and corners painted black on radon. A warning from the app's own
+  QML (a TypeError in a binding) fails the test it shows in.
 
 The screens read their codes from `tests/data/irdb`: a few categories made by
 `tools/build-irdb.py` from Flipper-IRDB (CC0-1.0) - for each, its first three
